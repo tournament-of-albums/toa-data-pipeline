@@ -80,6 +80,7 @@ def score_item(row, name):
         "score": to_decimal(row[ScoresCol.SCORE]),
         "robustness": to_decimal(row[ScoresCol.ROBUSTNESS]),
         "rank": to_decimal(row[ScoresCol.RANK]),
+        "num_matches": int(row[ScoresCol.NUM_MATCHES]),
         "artist": name.get("artist", ""),
         "album": name.get("album", ""),
         "short-name": name.get("short-name", ""),

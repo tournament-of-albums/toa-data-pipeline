@@ -1,7 +1,7 @@
 # scores-enricher
 
-Reads `scores/scores.parquet` and writes `scores/enriched_scores.parquet` with four
-added columns. The raw scores file is left untouched.
+Reads `scores/scores.parquet` and `results/consolidated/results.parquet`, and writes
+`scores/enriched_scores.parquet` with five added columns. The raw scores file is left untouched.
 
 ## Added columns
 
@@ -11,6 +11,7 @@ added columns. The raw scores file is left untouched.
 | `is_new` | true on the first date the album was scored |
 | `score_delta` | change since the album's previous scored date; null when `is_new` |
 | `rank_delta` | places gained since the album's previous scored date; null when `is_new` |
+| `num_matches` | matches the album has played on or before this date, from the consolidated results |
 
 ## Sign convention
 

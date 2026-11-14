@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+import numpy as np
 import pandas as pd
 from toa.columns import NamesCol, ScoresCol, StatisticsCol, VizCol
 from transform import (
@@ -128,6 +129,7 @@ def test_score_item_includes_rank():
             ScoresCol.SCORE: 0.5,
             ScoresCol.ROBUSTNESS: 1.2,
             ScoresCol.RANK: 1.5,
+            ScoresCol.NUM_MATCHES: 7,
         }
     )
     item = score_item(
@@ -135,6 +137,23 @@ def test_score_item_includes_rank():
     )
     assert item["rank"] == Decimal("1.5")
     assert item["artist"] == "Artist"
+
+
+def test_score_item_includes_num_matches_as_an_int():
+    # numpy ints from the parquet are not a type boto3 can serialise.
+    row = pd.Series(
+        {
+            ScoresCol.ID: "a",
+            ScoresCol.DATE: "2024-01-01",
+            ScoresCol.SCORE: 0.5,
+            ScoresCol.ROBUSTNESS: 1.2,
+            ScoresCol.RANK: 1.0,
+            ScoresCol.NUM_MATCHES: np.int64(12),
+        }
+    )
+    item = score_item(row, {})
+    assert item["num_matches"] == 12
+    assert type(item["num_matches"]) is int
 
 
 def test_score_item_missing_name_defaults_to_empty_strings():
@@ -145,6 +164,7 @@ def test_score_item_missing_name_defaults_to_empty_strings():
             ScoresCol.SCORE: 0.5,
             ScoresCol.ROBUSTNESS: 1.2,
             ScoresCol.RANK: 1.0,
+            ScoresCol.NUM_MATCHES: 1,
         }
     )
     item = score_item(row, {})

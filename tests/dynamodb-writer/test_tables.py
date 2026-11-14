@@ -75,6 +75,7 @@ def _scores(*ids, date="2024-01-01"):
             ScoresCol.SCORE: [1.0] * n,
             ScoresCol.ROBUSTNESS: [0.5] * n,
             ScoresCol.RANK: list(range(1, n + 1)),
+            ScoresCol.NUM_MATCHES: [1] * n,
         }
     )
 

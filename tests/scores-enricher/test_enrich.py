@@ -5,12 +5,13 @@ import pytest
 from enrich import (
     _assign_ranks,
     add_is_new,
+    add_num_matches,
     add_rank_delta,
     add_ranks,
     add_score_delta,
     enrich,
 )
-from toa.columns import ScoresCol
+from toa.columns import ResultsCol, ScoresCol
 
 TOLERANCE = 0.000005
 
@@ -294,6 +295,80 @@ def test_add_rank_delta_no_cross_album_contamination():
     assert result.loc[("b", "2024-01-02"), ScoresCol.RANK_DELTA] == pytest.approx(-1.0)
 
 
+# ── add_num_matches ────────────────────────────────────────────────────────────
+
+
+def make_results_df(rows):
+    return pd.DataFrame(
+        rows, columns=[ResultsCol.MATCH_ID, ResultsCol.DATE, ResultsCol.ORDER]
+    )
+
+
+def make_dated_df(rows):
+    """Scores rows reduced to (id, date): add_num_matches reads nothing else."""
+    df = pd.DataFrame(rows, columns=[ScoresCol.ID, ScoresCol.DATE])
+    df[ScoresCol.SCORE] = 0.0
+    df[ScoresCol.ROBUSTNESS] = 1.0
+    return df
+
+
+def num_matches_by_key(df):
+    return df.set_index([ScoresCol.ID, ScoresCol.DATE])[ScoresCol.NUM_MATCHES]
+
+
+def test_add_num_matches_accumulates_across_dates():
+    scores = make_dated_df(
+        [("a", "2024-01-01"), ("a", "2024-01-02"), ("a", "2024-01-03")]
+    )
+    results = make_results_df(
+        [
+            ("m1", "2024-01-01", ["a", "b"]),
+            ("m2", "2024-01-02", ["b", "a"]),
+            ("m3", "2024-01-03", ["a", "c"]),
+        ]
+    )
+    counts = num_matches_by_key(add_num_matches(scores, results))
+    assert counts[("a", "2024-01-01")] == 1
+    assert counts[("a", "2024-01-02")] == 2
+    assert counts[("a", "2024-01-03")] == 3
+
+
+def test_add_num_matches_carries_forward_on_a_date_without_a_match():
+    scores = make_dated_df([("a", "2024-01-01"), ("a", "2024-01-02")])
+    results = make_results_df(
+        [("m1", "2024-01-01", ["a", "b"]), ("m2", "2024-01-02", ["b", "c"])]
+    )
+    counts = num_matches_by_key(add_num_matches(scores, results))
+    assert counts[("a", "2024-01-02")] == 1
+
+
+def test_add_num_matches_counts_two_matches_on_one_date():
+    scores = make_dated_df([("a", "2024-01-01")])
+    results = make_results_df(
+        [("m1", "2024-01-01", ["a", "b"]), ("m2", "2024-01-01", ["c", "a"])]
+    )
+    counts = num_matches_by_key(add_num_matches(scores, results))
+    assert counts[("a", "2024-01-01")] == 2
+
+
+def test_add_num_matches_no_cross_album_contamination():
+    scores = make_dated_df([("a", "2024-01-01"), ("b", "2024-01-01")])
+    results = make_results_df(
+        [("m1", "2024-01-01", ["a", "b"]), ("m2", "2024-01-01", ["a", "c"])]
+    )
+    counts = num_matches_by_key(add_num_matches(scores, results))
+    assert counts[("a", "2024-01-01")] == 2
+    assert counts[("b", "2024-01-01")] == 1
+
+
+def test_add_num_matches_is_an_int_column():
+    scores = make_dated_df([("a", "2024-01-01"), ("a", "2024-01-02")])
+    results = make_results_df([("m1", "2024-01-02", ["a", "b"])])
+    result = add_num_matches(scores, results)
+    assert pd.api.types.is_integer_dtype(result[ScoresCol.NUM_MATCHES])
+    assert len(result) == len(scores)
+
+
 # ── enrich ─────────────────────────────────────────────────────────────────────
 
 
@@ -306,12 +381,16 @@ def test_enrich_adds_every_column():
             ("b", 2.0, "2024-01-02", 1.0),
         ]
     )
-    result = enrich(df, TOLERANCE)
+    results = make_results_df(
+        [("m1", "2024-01-01", ["a", "b"]), ("m2", "2024-01-02", ["b", "a"])]
+    )
+    result = enrich(df, results, TOLERANCE)
     for column in (
         ScoresCol.RANK,
         ScoresCol.IS_NEW,
         ScoresCol.SCORE_DELTA,
         ScoresCol.RANK_DELTA,
+        ScoresCol.NUM_MATCHES,
     ):
         assert column in result.columns
     assert len(result) == len(df)
@@ -327,7 +406,10 @@ def test_enrich_tracks_a_swap_end_to_end():
             ("b", 2.0, "2024-01-02", 1.0),
         ]
     )
-    result = enrich(df, TOLERANCE).set_index([ScoresCol.ID, ScoresCol.DATE])
+    results = make_results_df(
+        [("m1", "2024-01-01", ["a", "b"]), ("m2", "2024-01-02", ["b", "a"])]
+    )
+    result = enrich(df, results, TOLERANCE).set_index([ScoresCol.ID, ScoresCol.DATE])
 
     # The debut date has nothing to move from.
     assert math.isnan(result.loc[("a", "2024-01-01"), ScoresCol.RANK_DELTA])

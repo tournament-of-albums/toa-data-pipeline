@@ -1,5 +1,5 @@
 import pandas as pd
-from toa.columns import ScoresCol
+from toa.columns import ResultsCol, ScoresCol
 
 
 def _assign_ranks(scores_desc: list[float], tolerance: float) -> list[float]:
@@ -73,12 +73,35 @@ def add_rank_delta(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def enrich(df: pd.DataFrame, tolerance: float) -> pd.DataFrame:
+def add_num_matches(df: pd.DataFrame, results: pd.DataFrame) -> pd.DataFrame:
+    """Add a `num_matches` column. For each album, the number of matches it has
+    played on or before the row's date, counted from `results` (one row per
+    match, with the ranked album ids in `order`).
+    """
+    played = results[[ResultsCol.DATE, ResultsCol.ORDER]].explode(ResultsCol.ORDER)
+    per_date = (
+        played.rename(columns={ResultsCol.ORDER: ScoresCol.ID})
+        .groupby([ScoresCol.ID, ResultsCol.DATE])
+        .size()
+        .rename("_played")
+        .reset_index()
+        .rename(columns={ResultsCol.DATE: ScoresCol.DATE})
+    )
+    df = df.merge(per_date, on=[ScoresCol.ID, ScoresCol.DATE], how="left")
+    df = df.sort_values([ScoresCol.ID, ScoresCol.DATE], ignore_index=True)
+    played_today = df.pop("_played").fillna(0).astype(int)
+    df[ScoresCol.NUM_MATCHES] = played_today.groupby(df[ScoresCol.ID]).cumsum()
+    return df
+
+
+def enrich(df: pd.DataFrame, results: pd.DataFrame, tolerance: float) -> pd.DataFrame:
     """Apply all enrichments to a scores DataFrame, adding `rank`, `is_new`,
-    `score_delta` and `rank_delta` columns.
+    `score_delta`, `rank_delta` and `num_matches` columns. `results` is the
+    consolidated results, used only for `num_matches`.
     """
     df = add_ranks(df, tolerance)
     df = add_is_new(df)
     df = add_score_delta(df)
     df = add_rank_delta(df)
+    df = add_num_matches(df, results)
     return df
