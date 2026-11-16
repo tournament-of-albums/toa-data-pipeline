@@ -60,14 +60,14 @@ make format   # isort, black
 Imports are wired in `pyproject.toml` under `[tool.pytest.ini_options] pythonpath` — it
 puts the shared layer and each tested Lambda directory on `sys.path`, so tests import by
 bare module name and no `conftest.py` is needed. Running the tests requires
-[toa-lambda-layer-common](https://github.com/tor-gu/toa-lambda-layer-common) checked out
+[toa-lambda-layer-common](https://github.com/tournament-of-albums/toa-lambda-layer-common) checked out
 alongside this repo.
 
 ## Related projects
 
 These live in their own repositories.
 
-- [toa-lambda-layer-common](https://github.com/tor-gu/toa-lambda-layer-common) — shared layer attached to every Lambda here: logging, column names, S3 paths.
-- [toa-lambda-score](https://github.com/tor-gu/toa-lambda-score) — computes the album scores, invoked by scores-updater once per date being scored.
-- [toa-api](https://github.com/tor-gu/toa-api) — read-only API serving the DynamoDB tables dynamodb-writer populates.
+- [toa-lambda-layer-common](https://github.com/tournament-of-albums/toa-lambda-layer-common) — shared layer attached to every Lambda here: logging, column names, S3 paths.
+- [toa-lambda-score](https://github.com/tournament-of-albums/toa-lambda-score) — computes the album scores, invoked by scores-updater once per date being scored.
+- [toa-api](https://github.com/tournament-of-albums/toa-api) — read-only API serving the DynamoDB tables dynamodb-writer populates.
 

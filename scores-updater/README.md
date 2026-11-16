@@ -32,7 +32,7 @@ with `SD` and `UNIT_WIN_PROB` passed through.
 ## Warm starts
 
 Each date is uses the previous datet's scores as an initial value (passed to the
-score Lambda as [`initial_strengths`](https://github.com/tor-gu/toa-lambda-score#payload)).
+score Lambda as [`initial_strengths`](https://github.com/tournament-of-albums/toa-lambda-score#payload)).
 
 The dates are split into contiguous chunks of `CHUNK_SIZE`, and chaining happens strictly
 within a chunk: each chunk's first date starts cold, and every date after it is seeded by
